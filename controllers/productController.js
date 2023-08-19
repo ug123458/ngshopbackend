@@ -147,6 +147,18 @@ const uploadgallery = async (req, res) => {
       imagesPaths.push(`${basePath}${file.filename}`);
     });
   }
+
+  const product = await Product.findByIdAndUpdate(
+    req.params.id,
+    {
+      images: imagesPaths,
+    },
+    { new: true }
+  );
+  if (!product) {
+    return res.status(400).send("the product cannot be updated!");
+  }
+  res.send(product);
 };
 
 module.exports = {
