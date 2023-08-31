@@ -1,5 +1,9 @@
 const { OrderItem } = require("../models/order-item");
 const { Order } = require("../models/order");
+const { Product } = require("../models/product");
+const stripe = require("stripe")(
+  "sk_test_51NkRwRGqGFK9CunM6FHKtJ1ErJHsATRwJaCkmn8rBOzRtadYW1VAwscl1OnQV8vdY4rdOmlgqc9eAR406gqgW8Dd00kqUUv0Ev"
+);
 
 const getall = async (req, res) => {
   const orderList = await Order.find()
@@ -149,6 +153,41 @@ const userorders = async (req, res) => {
   res.send(userOrderList);
 };
 
+const createCheckoutSession = async (req, res) => {
+  const orderItems = req.body;
+
+  if (!orderItems) {
+    res.status(400).send("No order items");
+  }
+
+  const line_items = await Promise.all(
+    orderItems.map(async (orderItem) => {
+      const product = await Product.findById(orderItem.product);
+      const price = product.price;
+      return {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: product.name,
+            images: [product.image],
+          },
+          unit_amount: price * 100,
+        },
+        quantity: orderItem.quantity,
+      };
+    })
+  );
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    line_items: line_items,
+    mode: "payment",
+    success_url: "https://ug123458.github.io/ngshopuser/success",
+    cancel_url: "https://ug123458.github.io/ngshopuser/error",
+  });
+
+  res.json({ id: session.id });
+};
+
 module.exports = {
   getall,
   getone,
@@ -158,4 +197,5 @@ module.exports = {
   totalsales,
   count,
   userorders,
+  createCheckoutSession,
 };
